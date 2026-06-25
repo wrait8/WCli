@@ -343,7 +343,7 @@ public:
     WCliHistory& getHistory();
     void clearHistory();
     
-    // Utilities
+    // Utilities - Updated to not show library name
     String getAllCommandsString(bool includeDescriptions = true) const;
     void printAllCommands(Stream& output = Serial) const;
     void printHelp(Stream& output = Serial) const;
