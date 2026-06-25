@@ -993,7 +993,7 @@ void WCli::clearHistory() {
 }
 
 //==============================================================================
-// Utilities
+// Utilities - Updated to not show library name
 //==============================================================================
 String WCli::getAllCommandsString(bool includeDescriptions) const {
     if (commandCount == 0) return "No commands registered";
@@ -1009,9 +1009,9 @@ String WCli::getAllCommandsString(bool includeDescriptions) const {
 }
 
 void WCli::printAllCommands(Stream& output) const {
-    output.println("=== Registered Commands ===");
+    output.println("=== Available Commands ===");
     if (commandCount == 0) {
-        output.println("(none)");
+        output.println("  (none)");
     } else {
         for (uint8_t i = 0; i < commandCount; i++) {
             if (commands[i]) {
@@ -1027,11 +1027,11 @@ void WCli::printAllCommands(Stream& output) const {
             }
         }
     }
-    output.println("===========================");
+    output.println("==========================");
 }
 
 void WCli::printHelp(Stream& output) const {
-    output.println("\n=== WCli Help ===");
+    output.println("\n=== Help ===");
     output.println("Available Commands:");
     printAllCommands(output);
     output.println("\nUsage:");
@@ -1040,11 +1040,12 @@ void WCli::printHelp(Stream& output) const {
     output.println("  <value>          : Positional argument");
     output.println("  -flag            : Flag argument");
     output.println("  \"quoted value\"   : Value with spaces");
-    output.println("================\n");
+    output.println("  Example: led -state on");
+    output.println("===========\n");
 }
 
 void WCli::printStatus(Stream& output) const {
-    output.println("\n=== WCli Status ===");
+    output.println("\n=== System Status ===");
     output.print("Commands: ");
     output.print(commandCount);
     output.print("/");
@@ -1187,7 +1188,6 @@ WCliError* WCli::_popErrorQueue() {
 }
 
 void WCli::_parseCommand(const char* input) {
-    // Simple parsing for now - will be enhanced
     char buffer[256];
     strncpy(buffer, input, sizeof(buffer) - 1);
     buffer[sizeof(buffer) - 1] = '\0';
@@ -1216,10 +1216,8 @@ void WCli::_parseCommand(const char* input) {
 bool WCli::_parseArguments(WCliCommand* cmd, char* args, uint8_t argCount) {
     if (!cmd) return false;
     
-    // Skip command name
     uint8_t startIndex = 1;
     
-    // For single argument commands, treat everything as one argument
     if (cmd->getType() == WCliCommandType::SINGLE_ARG && argCount > startIndex) {
         String combined = "";
         for (uint8_t i = startIndex; i < argCount; i++) {
@@ -1234,7 +1232,6 @@ bool WCli::_parseArguments(WCliCommand* cmd, char* args, uint8_t argCount) {
         return true;
     }
     
-    // For boundless commands, each argument is separate
     if (cmd->getType() == WCliCommandType::BOUNDLESS) {
         for (uint8_t i = startIndex; i < argCount; i++) {
             WCliArgument* arg = cmd->addArgument(("arg" + String(i - startIndex)).c_str());
@@ -1246,20 +1243,17 @@ bool WCli::_parseArguments(WCliCommand* cmd, char* args, uint8_t argCount) {
         return true;
     }
     
-    // Normal command parsing
     uint8_t positionalIndex = 0;
     for (uint8_t i = startIndex; i < argCount; i++) {
         char* argStr = args[i];
         
-        // Check if it's a named argument
         if (argStr[0] == '-') {
             char* name = argStr + 1;
             char* value = nullptr;
             
-            // Check if next argument is value
             if (i + 1 < argCount && args[i + 1][0] != '-') {
                 value = args[i + 1];
-                i++; // Skip value
+                i++;
             }
             
             WCliArgument* arg = cmd->getArgument(name);
@@ -1279,7 +1273,6 @@ bool WCli::_parseArguments(WCliCommand* cmd, char* args, uint8_t argCount) {
                 return false;
             }
         } else {
-            // Positional argument
             WCliArgument* arg = cmd->getArgument(positionalIndex);
             if (!arg || arg->getType() != WCliArgumentType::POSITIONAL) {
                 _handleError(WCliErrorType::UNKNOWN_ARGUMENT, cmd->getName(), String(positionalIndex).c_str());
@@ -1291,7 +1284,6 @@ bool WCli::_parseArguments(WCliCommand* cmd, char* args, uint8_t argCount) {
         }
     }
     
-    // Check for missing required arguments
     for (uint8_t i = 0; i < cmd->getArgumentCount(); i++) {
         WCliArgument* arg = cmd->getArgument(i);
         if (arg && arg->isRequired() && !arg->isSet() && !arg->hasDefaultValue()) {
@@ -1309,7 +1301,6 @@ uint8_t WCli::_splitArguments(char* input, char** args, uint8_t maxArgs) {
     bool escapeNext = false;
     
     while (*input && count < maxArgs) {
-        // Skip leading delimiters
         while (*input && (*input == delimiter || *input == '\t') && !inQuotes) {
             input++;
         }
@@ -1319,7 +1310,6 @@ uint8_t WCli::_splitArguments(char* input, char** args, uint8_t maxArgs) {
         args[count] = input;
         count++;
         
-        // Parse until delimiter or end
         while (*input) {
             if (escapeNext) {
                 escapeNext = false;
@@ -1335,7 +1325,6 @@ uint8_t WCli::_splitArguments(char* input, char** args, uint8_t maxArgs) {
             
             if (*input == quoteChar) {
                 inQuotes = !inQuotes;
-                // Remove quotes by shifting characters
                 char* src = input;
                 char* dst = input;
                 while (*src) {
@@ -1373,7 +1362,6 @@ void WCli::_handleError(WCliErrorType type, const char* commandName,
     if (argumentName) error->setArgumentName(argumentName);
     if (data) error->setData(data);
     
-    // Set appropriate message
     String msg;
     switch (type) {
         case WCliErrorType::EMPTY_LINE:
